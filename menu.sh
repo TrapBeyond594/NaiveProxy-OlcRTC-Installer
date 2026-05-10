@@ -16,6 +16,8 @@ main_menu() {
         echo "3) Настроить OlcRTC"
         echo "4) Управление сервисами (Start/Stop/Status)"
         echo "5) Просмотр логов"
+        echo "6) Включить BBR"
+        echo "7) Полезные команды и инфо"
         echo "0) Выход"
         echo "==============================================="
         read -p "Выберите опцию: " choice
@@ -26,6 +28,8 @@ main_menu() {
             3) configure_olcrtc ;;
             4) service_management ;;
             5) view_logs ;;
+            6) enable_bbr ; read -p "Нажмите Enter для продолжения..." ;;
+            7) show_info ;;
             0) exit 0 ;;
             *) log_error "Неверный выбор" ; sleep 1 ;;
         esac
@@ -36,6 +40,7 @@ configure_naive() {
     clear
     echo "--- Настройка NaiveProxy ---"
     read -p "Введите домен (например, example.com): " domain
+    read -p "Введите Email для SSL (Let's Encrypt): " email
     read -p "Введите порт (по умолчанию 443): " port
     port=${port:-443}
 
@@ -45,16 +50,34 @@ configure_naive() {
         if [[ $confirm != "y" ]]; then return; fi
     fi
 
-    read -p "Введите имя пользователя: " user
-    read -p "Введите пароль: " pass
-
-    sed "s|:PORT|:$port|g; s|USER|$user|g; s|PASS|$pass|g" "$SCRIPT_DIR/configs/Caddyfile.template" > /etc/caddy/Caddyfile
-
-    # Simple replacement for domain if needed, though Naive usually works on a port or domain.
-    # The template I made uses :PORT. If a domain is provided, we should probably use it.
-    if [[ -n "$domain" && "$domain" != "localhost" ]]; then
-        sed -i "s|:$port|$domain:$port|g" /etc/caddy/Caddyfile
+    read -p "Введите имя пользователя (оставьте пустым для автогенерации): " user
+    if [ -z "$user" ]; then
+        user=$(openssl rand -base64 12 | tr -dc 'A-Za-z0-9' | head -c 12)
+        log_info "Сгенерирован логин: $user"
     fi
+    read -p "Введите пароль (оставьте пустым для автогенерации): " pass
+    if [ -z "$pass" ]; then
+        pass=$(openssl rand -base64 18 | tr -dc 'A-Za-z0-9' | head -c 18)
+        log_info "Сгенерирован пароль: $pass"
+    fi
+
+    cat > /etc/caddy/Caddyfile << EOF
+{
+    order forward_proxy before file_server
+}
+$domain:$port {
+    tls $email
+    forward_proxy {
+        basic_auth $user $pass
+        hide_ip
+        hide_via
+        probe_resistance
+    }
+    file_server {
+        root /var/www/html
+    }
+}
+EOF
 
     cp "$SCRIPT_DIR/services/naiveproxy.service" /etc/systemd/system/
     systemctl daemon-reload
@@ -135,6 +158,29 @@ view_logs() {
         2) journalctl -u olcrtc -n 50 --no-pager ;;
         *) return ;;
     esac
+    read -p "Нажмите Enter для продолжения..."
+}
+
+show_info() {
+    clear
+    echo "--- Полезная информация ---"
+    echo "NaiveProxy URL для клиента:"
+    if [ -f /etc/caddy/Caddyfile ]; then
+        # Try to extract values
+        local domain=$(grep -v "{" /etc/caddy/Caddyfile | grep ":" | head -n1 | cut -d":" -f1 | xargs)
+        local port=$(grep -v "{" /etc/caddy/Caddyfile | grep ":" | head -n1 | cut -d":" -f2 | cut -d" " -f1 | xargs)
+        local user=$(grep "basic_auth" /etc/caddy/Caddyfile | head -n1 | awk '{print $2}')
+        local pass=$(grep "basic_auth" /etc/caddy/Caddyfile | head -n1 | awk '{print $3}')
+        echo "naive+https://$user:$pass@$domain:$port"
+    else
+        echo "Caddyfile не найден. Сначала настройте NaiveProxy."
+    fi
+    echo ""
+    echo "Команды:"
+    echo "  systemctl status caddy      - статус NaiveProxy"
+    echo "  systemctl status olcrtc     - статус OlcRTC"
+    echo "  journalctl -u caddy -f      - логи Caddy в реальном времени"
+    echo ""
     read -p "Нажмите Enter для продолжения..."
 }
 

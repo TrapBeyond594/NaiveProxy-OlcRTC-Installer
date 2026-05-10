@@ -29,6 +29,30 @@ check_root() {
     fi
 }
 
+enable_bbr() {
+    log_info "Включение BBR..."
+    if sysctl net.ipv4.tcp_congestion_control | grep -q "bbr"; then
+        log_info "BBR уже включен."
+        return
+    fi
+    echo "net.core.default_qdisc=fq" >> /etc/sysctl.conf
+    echo "net.ipv4.tcp_congestion_control=bbr" >> /etc/sysctl.conf
+    sysctl -p
+    if sysctl net.ipv4.tcp_congestion_control | grep -q "bbr"; then
+        log_info "BBR успешно включен."
+    else
+        log_error "Не удалось включить BBR."
+    fi
+}
+
+setup_dummy_page() {
+    log_info "Создание страницы-заглушки..."
+    mkdir -p /var/www/html
+    cat > /var/www/html/index.html << 'EOF'
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>Loading</title><style>body{background:linear-gradient(135deg,#0f172a,#1e293b);height:100vh;margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:sans-serif}.spinner{width:40px;height:40px;border-radius:50%;border:3px solid rgba(255,255,255,0.12);border-top-color:#38bdf8;animation:spin 0.8s linear infinite;margin-bottom:25px;box-shadow:0 0 18px rgba(56,189,248,0.25)}@keyframes spin{to{transform:rotate(360deg)}}.t{color:#cbd5e1;font-size:13px;letter-spacing:3px;font-weight:600}</style></head><body><div class="spinner"></div><div class="t">CONNECTING</div></body></html>
+EOF
+}
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
