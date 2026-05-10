@@ -1,0 +1,14 @@
+[Unit]
+Description=OlcRTC Server
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/olcrtc
+ExecStart=/usr/local/bin/olcrtc -mode srv -carrier wbstream -transport datachannel -id ROOM_ID -client-id CLIENT_ID -key KEY -link direct -dns 1.1.1.1:53 -data data
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
