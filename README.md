@@ -7,7 +7,7 @@
 Запустите этот скрипт, чтобы установить всё необходимое и открыть меню управления:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/TrapBeyond594/NaiveProxy-OlcRTC-Installer/quick-install.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/TrapBeyond594/NaiveProxy-OlcRTC-Installer/main/quick-install.sh)
 ```
 
 ---
