@@ -25,13 +25,13 @@
 Выполните одну команду для установки и запуска интерактивного меню:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/TrapBeyond594/New-Repository/main/quick-install.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/TrapBeyond594/NaiveProxy-OlcRTC-Installer/main/quick-install.sh)
 ```
 
 Или установите вручную:
 ```bash
-git clone https://github.com/TrapBeyond594/New-Repository.git
-cd New-Repository
+git clone https://github.com/TrapBeyond594/NaiveProxy-OlcRTC-Installer.git
+cd NaiveProxy-OlcRTC-Installer
 chmod +x menu.sh
 sudo ./menu.sh
 ```
