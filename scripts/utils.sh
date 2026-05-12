@@ -5,6 +5,8 @@ get_os() {
     if [ -f /etc/os-release ]; then
         . /etc/os-release
         echo "$ID"
+    elif [ -f /etc/redhat-release ]; then
+        echo "centos"
     else
         echo "unknown"
     fi
@@ -29,20 +31,40 @@ check_root() {
     fi
 }
 
-enable_bbr() {
-    log_info "Включение BBR..."
-    if sysctl net.ipv4.tcp_congestion_control | grep -q "bbr"; then
-        log_info "BBR уже включен."
-        return
-    fi
-    echo "net.core.default_qdisc=fq" >> /etc/sysctl.conf
-    echo "net.ipv4.tcp_congestion_control=bbr" >> /etc/sysctl.conf
-    sysctl -p
-    if sysctl net.ipv4.tcp_congestion_control | grep -q "bbr"; then
-        log_info "BBR успешно включен."
-    else
-        log_error "Не удалось включить BBR."
-    fi
+optimize_system() {
+    log_info "Оптимизация системы..."
+
+    # Backup sysctl.conf
+    cp /etc/sysctl.conf /etc/sysctl.conf.bak
+
+    cat > /etc/sysctl.d/99-naive-optimizations.conf << EOF
+# TCP/IP Stack Optimizations
+net.core.default_qdisc=fq
+net.ipv4.tcp_congestion_control=bbr
+net.core.rmem_max=16777216
+net.core.wmem_max=16777216
+net.ipv4.tcp_rmem=4096 87380 16777216
+net.ipv4.tcp_wmem=4096 65536 16777216
+net.ipv4.tcp_fastopen=3
+net.ipv4.tcp_slow_start_after_idle=0
+net.ipv4.tcp_mtu_probing=1
+net.ipv4.tcp_notsent_lowat=16384
+net.ipv4.tcp_window_scaling=1
+net.ipv4.tcp_adv_win_scale=1
+fs.file-max=1000000
+EOF
+
+    sysctl -p /etc/sysctl.d/99-naive-optimizations.conf >/dev/null 2>&1
+
+    # Limits
+    cat > /etc/security/limits.d/99-naive-limits.conf << EOF
+* soft nofile 512000
+* hard nofile 512000
+root soft nofile 512000
+root hard nofile 512000
+EOF
+
+    log_info "BBR и сетевые оптимизации применены."
 }
 
 setup_dummy_page() {

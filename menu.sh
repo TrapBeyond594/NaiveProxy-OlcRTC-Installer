@@ -1,187 +1,249 @@
 #!/bin/bash
-# Check if running from correct directory
+# NaiveProxy + OlcRTC Manager
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/scripts/utils.sh"
+source "$SCRIPT_DIR/scripts/manager.sh"
+source "$SCRIPT_DIR/scripts/update.sh"
 
 check_root
 
 main_menu() {
     while true; do
         clear
-        echo "==============================================="
-        echo "   NaiveProxy + OlcRTC Installer & Manager"
-        echo "==============================================="
-        echo "1) Установить всё (Dependencies, Caddy, OlcRTC)"
-        echo "2) Настроить NaiveProxy (Caddy)"
-        echo "3) Настроить OlcRTC"
-        echo "4) Управление сервисами (Start/Stop/Status)"
-        echo "5) Просмотр логов"
-        echo "6) Включить BBR"
-        echo "7) Полезные команды и инфо"
-        echo "0) Выход"
-        echo "==============================================="
+        echo -e "${GREEN}===============================================${NC}"
+        echo -e "${YELLOW}   NaiveProxy + OlcRTC Manager v2.0${NC}"
+        echo -e "${GREEN}===============================================${NC}"
+        echo "1) 📦 Установка и Обновление"
+        echo "2) 🛡️ NaiveProxy (Пользователи и Ссылки)"
+        echo "3) 🚀 OlcRTC (Room ID и Ссылки)"
+        echo "4) ⚙️ Оптимизация Системы"
+        echo "5) 🛠️ Управление Сервисами (Start/Stop)"
+        echo "6) 📧 Настроить Email (SMTP)"
+        echo "7) 📝 Просмотр Логов"
+        echo "8) 🗑️ Удалить всё (Uninstall)"
+        echo "0) 🚪 Выход"
+        echo -e "${GREEN}===============================================${NC}"
         read -p "Выберите опцию: " choice
 
         case $choice in
-            1) "$SCRIPT_DIR/scripts/install.sh" ;;
-            2) configure_naive ;;
-            3) configure_olcrtc ;;
-            4) service_management ;;
-            5) view_logs ;;
-            6) enable_bbr ; read -p "Нажмите Enter для продолжения..." ;;
-            7) show_info ;;
+            1) install_update_menu ;;
+            2) naive_manager_menu ;;
+            3) olcrtc_manager_menu ;;
+            4) optimize_system ; read -p "Нажмите Enter..." ;;
+            5) service_management ;;
+            6) configure_smtp ;;
+            7) view_logs ;;
+            8) "$SCRIPT_DIR/scripts/uninstall.sh" ;;
             0) exit 0 ;;
             *) log_error "Неверный выбор" ; sleep 1 ;;
         esac
     done
 }
 
-configure_naive() {
+install_update_menu() {
     clear
-    echo "--- Настройка NaiveProxy ---"
-    read -p "Введите домен (например, example.com): " domain
-    read -p "Введите Email для SSL (Let's Encrypt): " email
-    read -p "Введите порт (по умолчанию 443): " port
+    echo "--- Установка и Обновление ---"
+    echo "1) Полная установка (с нуля)"
+    echo "2) Проверить обновления репозитория"
+    echo "3) Обновить репозиторий"
+    echo "4) Обновить систему (apt/dnf/pacman)"
+    echo "5) Настроить авто-проверку обновлений (cron)"
+    echo "0) Назад"
+    read -p "Выберите: " o
+    case $o in
+        1) "$SCRIPT_DIR/scripts/install.sh" ;;
+        2) check_repo_updates ; read -p "Нажмите Enter..." ;;
+        3) update_repo ; read -p "Нажмите Enter..." ;;
+        4) update_system ; read -p "Нажмите Enter..." ;;
+        5) setup_cron_updates ; read -p "Нажмите Enter..." ;;
+    esac
+}
+
+naive_manager_menu() {
+    while true; do
+        clear
+        echo "--- Менеджер NaiveProxy ---"
+        echo "1) Добавить пользователя"
+        echo "2) Список пользователей и ссылок"
+        echo "3) Удалить пользователя"
+        echo "4) Настроить Домен/Email (Первичная настройка)"
+        echo "0) Назад"
+        read -p "Выберите: " o
+        case $o in
+            1)
+                read -p "Имя пользователя: " u
+                read -p "Пароль (пусто для авто): " p
+                [ -z "$p" ] && p=$(openssl rand -base64 12)
+                read -p "Заметка (для кого): " n
+                add_link "naive" "$u" "$p" "$n"
+                rebuild_caddyfile
+                log_info "Пользователь добавлен." ; sleep 1
+                ;;
+            2)
+                list_links "naive"
+                read -p "Хотите отправить ссылку на почту? (y/n): " em
+                if [[ $em == "y" ]]; then
+                    read -p "Введите ID пользователя: " sid
+                    read -p "Email получателя: " temail
+                    local link_data=$(jq -r ".[] | select(.service == \"naive\" and .id == \"$sid\")" "$DB_FILE")
+                    local d=$(get_config "domain")
+                    local pr=$(get_config "port")
+                    local pass=$(echo "$link_data" | jq -r '.password')
+                    local body="Ваша ссылка NaiveProxy:\nnaive+https://$sid:$pass@$d:$pr"
+                    send_link_email "$temail" "NaiveProxy Config" "$body"
+                fi
+                read -p "Нажмите Enter..."
+                ;;
+            3)
+                read -p "ID пользователя для удаления: " sid
+                delete_link "naive" "$sid"
+                rebuild_caddyfile
+                log_info "Удалено." ; sleep 1
+                ;;
+            4) configure_naive_basic ;;
+            0) break ;;
+        esac
+    done
+}
+
+configure_naive_basic() {
+    read -p "Введите домен: " domain
+    read -p "Введите Email для SSL: " email
+    read -p "Введите порт (443): " port
     port=${port:-443}
 
-    if check_port "$port"; then
-        log_warn "Порт $port уже используется другим процессом!"
-        read -p "Продолжить всё равно? (y/n): " confirm
-        if [[ $confirm != "y" ]]; then return; fi
-    fi
+    save_config "$domain" "$email" "$port"
 
-    read -p "Введите имя пользователя (оставьте пустым для автогенерации): " user
-    if [ -z "$user" ]; then
-        user=$(openssl rand -base64 12 | tr -dc 'A-Za-z0-9' | head -c 12)
-        log_info "Сгенерирован логин: $user"
+    # Create initial link if none
+    if [ $(jq 'length' "$DB_FILE") -eq 0 ]; then
+         u=$(openssl rand -hex 4)
+         p=$(openssl rand -base64 12)
+         add_link "naive" "$u" "$p" "Admin"
     fi
-    read -p "Введите пароль (оставьте пустым для автогенерации): " pass
-    if [ -z "$pass" ]; then
-        pass=$(openssl rand -base64 18 | tr -dc 'A-Za-z0-9' | head -c 18)
-        log_info "Сгенерирован пароль: $pass"
-    fi
-
-    cat > /etc/caddy/Caddyfile << EOF
-{
-    order forward_proxy before file_server
-}
-$domain:$port {
-    tls $email
-    forward_proxy {
-        basic_auth $user $pass
-        hide_ip
-        hide_via
-        probe_resistance
-    }
-    file_server {
-        root /var/www/html
-    }
-}
-EOF
-
-    cp "$SCRIPT_DIR/services/naiveproxy.service" /etc/systemd/system/
-    systemctl daemon-reload
+    rebuild_caddyfile
     open_port "$port"
-    log_info "Конфигурация NaiveProxy сохранена в /etc/caddy/Caddyfile"
-    read -p "Нажмите Enter для продолжения..."
 }
 
-configure_olcrtc() {
+configure_smtp() {
     clear
-    echo "--- Настройка OlcRTC ---"
-    read -p "Введите Room ID (оставьте пустым для генерации): " room_id
-    if [ -z "$room_id" ]; then
-        if ! command -v olcrtc >/dev/null 2>&1; then
-            log_error "Бинарный файл olcrtc не найден. Сначала выполните установку (пункт 1)."
-            read -p "Нажмите Enter для возврата..."
-            return
-        fi
-        room_id=$(olcrtc -mode gen -carrier wbstream -dns 1.1.1.1:53 -amount 1 -data /opt/olcrtc/data)
-        log_info "Сгенерирован Room ID: $room_id"
-    fi
-    read -p "Введите Client ID (по умолчанию default): " client_id
-    client_id=${client_id:-default}
-    read -p "Введите Key (32 hex символа, оставьте пустым для генерации): " key
-    if [ -z "$key" ]; then
-        key=$(openssl rand -hex 32)
-        log_info "Сгенерирован Key: $key"
-    fi
+    echo "--- Настройка Email (SMTP) ---"
+    read -p "SMTP Хост (например, smtp.gmail.com): " host
+    read -p "SMTP Порт (например, 587): " port
+    read -p "Ваш Email (отправитель): " user
+    read -p "Пароль (или App Password): " pass
+    read -p "Использовать TLS? (y/n): " tls
+
+    local auth="on"
+    local starttls="on"
+    [[ $tls != "y" ]] && starttls="off"
+
+    cat > ~/.msmtprc << EOF
+defaults
+auth           $auth
+tls            on
+tls_trust_file /etc/ssl/certs/ca-certificates.crt
+logfile        ~/.msmtp.log
+
+account        default
+host           $host
+port           $port
+from           $user
+user           $user
+password       $pass
+tls_starttls   $starttls
+EOF
+    chmod 600 ~/.msmtprc
+    log_info "Настройки SMTP сохранены."
+    read -p "Нажмите Enter..."
+}
+
+olcrtc_manager_menu() {
+    while true; do
+        clear
+        echo "--- Менеджер OlcRTC ---"
+        echo "1) Сгенерировать новый Room ID / Ключ"
+        echo "2) Просмотр сохраненных ссылок"
+        echo "3) Удалить запись"
+        echo "4) Настроить сервис (Systemd)"
+        echo "0) Назад"
+        read -p "Выберите: " o
+        case $o in
+            1)
+                room_id=$(olcrtc -mode gen -carrier wbstream -dns 1.1.1.1:53 -amount 1 -data /opt/olcrtc/data)
+                key=$(openssl rand -hex 32)
+                read -p "Заметка (для кого): " n
+                add_link "olcrtc" "$room_id" "$key" "$n"
+                log_info "Сгенерировано: RoomID: $room_id, Key: $key"
+                read -p "Нажмите Enter..."
+                ;;
+            2)
+                list_links "olcrtc"
+                read -p "Хотите отправить на почту? (y/n): " em
+                if [[ $em == "y" ]]; then
+                    read -p "Введите Room ID: " sid
+                    read -p "Email получателя: " temail
+                    local link_data=$(jq -r ".[] | select(.service == \"olcrtc\" and .id == \"$sid\")" /etc/naive-olcrtc/links.json)
+                    local pass=$(echo "$link_data" | jq -r '.password')
+                    local body="Данные OlcRTC:\nRoom ID: $sid\nKey: $pass"
+                    send_link_email "$temail" "OlcRTC Config" "$body"
+                fi
+                read -p "Нажмите Enter..."
+                ;;
+            3)
+                read -p "Room ID для удаления: " sid
+                delete_link "olcrtc" "$sid"
+                log_info "Удалено." ; sleep 1
+                ;;
+            4) configure_olcrtc_basic ;;
+            0) break ;;
+        esac
+    done
+}
+
+configure_olcrtc_basic() {
+    read -p "Room ID: " rid
+    read -p "Client ID (default): " cid
+    cid=${cid:-default}
+    read -p "Key: " key
 
     cp "$SCRIPT_DIR/services/olcrtc.service" /etc/systemd/system/
-    sed -i "s/ROOM_ID/$room_id/g; s/CLIENT_ID/$client_id/g; s/KEY/$key/g" /etc/systemd/system/olcrtc.service
-
+    sed -i "s/ROOM_ID/$rid/g; s/CLIENT_ID/$cid/g; s/KEY/$key/g" /etc/systemd/system/olcrtc.service
     mkdir -p /opt/olcrtc/data
     systemctl daemon-reload
-    log_info "Конфигурация OlcRTC сохранена в системный сервис."
-    read -p "Нажмите Enter для продолжения..."
+    log_info "OlcRTC сервис обновлен."
 }
 
 service_management() {
     clear
     echo "--- Управление сервисами ---"
-    echo "1) NaiveProxy: Start"
-    echo "2) NaiveProxy: Stop"
-    echo "3) NaiveProxy: Restart"
-    echo "4) NaiveProxy: Status"
-    echo "----------------------------"
-    echo "5) OlcRTC: Start"
-    echo "6) OlcRTC: Stop"
-    echo "7) OlcRTC: Restart"
-    echo "8) OlcRTC: Status"
+    echo "1) NaiveProxy: Start | 2) Stop | 3) Restart | 4) Status"
+    echo "5) OlcRTC: Start     | 6) Stop | 7) Restart | 8) Status"
     echo "0) Назад"
-    read -p "Выберите опцию: " schoice
-
+    read -p "Выберите: " schoice
     case $schoice in
-        1) systemctl start naiveproxy ;;
-        2) systemctl stop naiveproxy ;;
-        3) systemctl restart naiveproxy ;;
-        4) systemctl status naiveproxy ;;
+        1) systemctl start caddy ;;
+        2) systemctl stop caddy ;;
+        3) systemctl restart caddy ;;
+        4) systemctl status caddy ;;
         5) systemctl start olcrtc ;;
         6) systemctl stop olcrtc ;;
         7) systemctl restart olcrtc ;;
         8) systemctl status olcrtc ;;
-        *) return ;;
     esac
-    read -p "Нажмите Enter для продолжения..."
+    read -p "Нажмите Enter..."
 }
 
 view_logs() {
     clear
     echo "--- Просмотр логов ---"
-    echo "1) NaiveProxy"
+    echo "1) NaiveProxy (Caddy)"
     echo "2) OlcRTC"
-    echo "0) Назад"
-    read -p "Выберите опцию: " lchoice
-
+    read -p "Выберите: " lchoice
     case $lchoice in
-        1) journalctl -u naiveproxy -n 50 --no-pager ;;
+        1) journalctl -u caddy -n 50 --no-pager ;;
         2) journalctl -u olcrtc -n 50 --no-pager ;;
-        *) return ;;
     esac
-    read -p "Нажмите Enter для продолжения..."
-}
-
-show_info() {
-    clear
-    echo "--- Полезная информация ---"
-    echo "NaiveProxy URL для клиента:"
-    if [ -f /etc/caddy/Caddyfile ]; then
-        # Try to extract values
-        local domain=$(grep -v "{" /etc/caddy/Caddyfile | grep ":" | head -n1 | cut -d":" -f1 | xargs)
-        local port=$(grep -v "{" /etc/caddy/Caddyfile | grep ":" | head -n1 | cut -d":" -f2 | cut -d" " -f1 | xargs)
-        local user=$(grep "basic_auth" /etc/caddy/Caddyfile | head -n1 | awk '{print $2}')
-        local pass=$(grep "basic_auth" /etc/caddy/Caddyfile | head -n1 | awk '{print $3}')
-        echo "naive+https://$user:$pass@$domain:$port"
-    else
-        echo "Caddyfile не найден. Сначала настройте NaiveProxy."
-    fi
-    echo ""
-    echo "Команды:"
-    echo "  systemctl status caddy      - статус NaiveProxy"
-    echo "  systemctl status olcrtc     - статус OlcRTC"
-    echo "  journalctl -u caddy -f      - логи Caddy в реальном времени"
-    echo ""
-    read -p "Нажмите Enter для продолжения..."
+    read -p "Нажмите Enter..."
 }
 
 main_menu
