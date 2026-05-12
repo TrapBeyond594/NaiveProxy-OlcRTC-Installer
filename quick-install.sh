@@ -3,7 +3,7 @@
 # Simple installer that clones the repo and runs the script
 # This allows the "curl | bash" one-liner to work correctly with multi-file projects.
 
-REPO_URL="https://github.com/TrapBeyond594/NaiveProxy-OlcRTC-Installer.git"
+REPO_URL="https://github.com/TrapBeyond594/New-Repository.git"
 INSTALL_DIR="/opt/naive-olcrtc"
 
 if [ "$EUID" -ne 0 ]; then
@@ -12,7 +12,15 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 echo "--- Инициализация установки ---"
-apt-get update && apt-get install -y git
+
+# Detect OS and install git
+if command -v apt-get >/dev/null; then
+    apt-get update && apt-get install -y git
+elif command -v dnf >/dev/null; then
+    dnf install -y git
+elif command -v pacman >/dev/null; then
+    pacman -Sy --noconfirm git
+fi
 
 if [ -d "$INSTALL_DIR" ]; then
     echo "Обновление существующей установки..."
@@ -23,7 +31,8 @@ else
     cd "$INSTALL_DIR"
 fi
 
-chmod +x menu.sh scripts/*.sh
+chmod +x menu.sh
+chmod +x scripts/*.sh
 
 # Run the actual install logic
 ./scripts/install.sh

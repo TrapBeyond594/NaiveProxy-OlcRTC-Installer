@@ -1,5 +1,6 @@
 #!/bin/bash
-source "$(dirname "$0")/utils.sh"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/utils.sh"
 
 install_base_deps() {
     log_info "Установка базовых зависимостей..."
@@ -7,10 +8,17 @@ install_base_deps() {
     case "$os" in
         debian|ubuntu|dietpi|raspbian)
             apt-get update
-            apt-get install -y curl git build-essential ufw wget openssl
+            apt-get install -y curl git build-essential ufw wget openssl jq msmtp
+            ;;
+        fedora|centos)
+            dnf groupinstall -y "Development Tools"
+            dnf install -y ufw wget openssl jq msmtp
+            ;;
+        arch)
+            pacman -Sy --noconfirm base-devel ufw wget openssl jq msmtp
             ;;
         *)
-            log_warn "Неподдерживаемая ОС для автоматической установки пакетов. Попробуйте установить curl, git, build-essential, ufw вручную."
+            log_warn "Неподдерживаемая ОС ($os). Попробуйте установить зависимости вручную."
             ;;
     esac
 }
@@ -44,7 +52,7 @@ install_go() {
     ln -sf /usr/local/go/bin/go /usr/bin/go
     ln -sf /usr/local/go/bin/gofmt /usr/bin/gofmt
 
-    # Ensure Go binaries are in PATH for root and future sessions
+    # Ensure Go binaries are in PATH
     if ! grep -q "/usr/local/go/bin" /root/.profile; then
         echo 'export PATH=$PATH:/usr/local/go/bin' >> /root/.profile
     fi
@@ -128,14 +136,26 @@ install_olcrtc() {
     fi
 }
 
+cleanup_build_deps() {
+    log_info "Очистка зависимостей сборки..."
+    rm -rf /usr/local/go
+    rm -rf "$HOME/go"
+    log_info "Очистка завершена."
+}
+
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     check_root
     install_base_deps
-    enable_bbr
+    optimize_system_full
     install_go
     install_mage
     install_caddy_naive
     install_olcrtc
+
+    read -p "Удалить зависимости сборки (Go, Mage, xcaddy)? (y/n): " cleanup
+    if [[ $cleanup == "y" ]]; then
+        cleanup_build_deps
+    fi
 
     log_info "Установка завершена! Теперь запустите ./menu.sh для настройки."
 fi

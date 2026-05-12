@@ -1,12 +1,13 @@
 [Unit]
-Description=OlcRTC Server
+Description=OlcRTC SFU Service
 After=network.target
 
 [Service]
 Type=simple
 User=root
 WorkingDirectory=/opt/olcrtc
-ExecStart=/usr/local/bin/olcrtc -mode srv -carrier wbstream -transport datachannel -id ROOM_ID -client-id CLIENT_ID -key KEY -link direct -dns 1.1.1.1:53 -data data
+ExecStartPre=/usr/bin/mkdir -p /opt/olcrtc/data
+ExecStart=/usr/local/bin/olcrtc -mode sfu -carrier wbstream -dns 1.1.1.1:53 -room ROOM_ID -client CLIENT_ID -key KEY -data /opt/olcrtc/data -port PORT
 Restart=always
 RestartSec=5
 

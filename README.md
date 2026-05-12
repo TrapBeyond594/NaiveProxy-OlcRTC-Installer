@@ -1,64 +1,73 @@
-# NaiveProxy + OlcRTC: Пошаговый гайд и Авто-установщик
+# 🛡️ NaiveProxy + OlcRTC Ultimate Installer & Manager
 
-Этот репозиторий предоставляет максимально простое и надежное решение для развертывания связки **NaiveProxy** (маскировка под Chrome трафик) и **OlcRTC** (туннелирование через WebRTC конференции). Оптимизировано для **DietPi**, **Debian** и **Ubuntu**.
+![License](https://img.shields.io/github/license/TrapBeyond594/New-Repository?style=flat-square)
+![Version](https://img.shields.io/badge/version-2.1-blue?style=flat-square)
+![Platform](https://img.shields.io/badge/platform-Linux-lightgrey?style=flat-square)
 
-## 🚀 Быстрая установка в одну команду
+Профессиональное решение для автоматизации развертывания и управления высокопроизводительными прокси-сервисами **NaiveProxy** и SFU-коммуникациями **OlcRTC**.
 
-Запустите этот скрипт, чтобы установить всё необходимое и открыть меню управления:
+---
+
+## 💎 Особенности (Features)
+
+- **🚀 Extreme Performance**: Автоматический тюнинг ядра, TCP стека и активация BBR для минимальных задержек.
+- **👥 Advanced Multi-User**: Генерация неограниченного числа ссылок с привязкой к дате и заметкам.
+- **🔄 Интеллектуальное Обновление**: Отдельное обновление системы, репозитория и каждого сервиса (с пересборкой из исходников).
+- **🛡️ Скрытность**: Встроенные шаблоны сайтов-заглушек (Elite Realty, Secure Gateway) для маскировки трафика.
+- **📱 Полная Совместимость**: Поддержка всех популярных дистрибутивов (Debian, Ubuntu, Arch, CentOS, Fedora).
+- **📧 Email Дистрибуция**: Отправка конфигурационных ссылок прямо на почту пользователям.
+- **🗑️ Чистое Удаление**: Возможность выборочного или полного удаления всех компонентов системы.
+
+---
+
+## 🚀 Быстрый запуск (Quick Start)
+
+Выполните одну команду для установки и запуска интерактивного меню:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/TrapBeyond594/NaiveProxy-OlcRTC-Installer/main/quick-install.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/TrapBeyond594/New-Repository/main/quick-install.sh)
+```
+
+Или установите вручную:
+```bash
+git clone https://github.com/TrapBeyond594/New-Repository.git
+cd New-Repository
+chmod +x menu.sh
+sudo ./menu.sh
 ```
 
 ---
 
-## 🛠 Пошаговый процесс
+## 📱 Клиентские приложения (Clients)
 
-### 1. Подготовка
-Вам понадобится:
-- VPS на базе Debian (11+) или Ubuntu (22.04+).
-- Привязанный поддомен (A-запись, указывающая на IP сервера).
-
-### 2. Установка
-Скрипт автоматически:
-- Включит **BBR** для максимальной скорости.
-- Установит зависимости (**Go**, **Mage**, **xcaddy**).
-- Соберет **Caddy** с плагином NaiveProxy.
-- Соберет **OlcRTC** из исходников.
-- Создаст страницу-заглушку для маскировки.
-
-### 3. Настройка через Меню
-Запустите `sudo ./menu.sh` и выполните следующие шаги:
-- **Пункт 2**: Настройте домен, Email (для SSL) и учетные данные NaiveProxy.
-- **Пункт 3**: Настройте OlcRTC (Room ID и Ключ).
-- **Пункт 4**: Запустите оба сервиса.
-
----
-
-## 📱 Список клиентов
-
+### 🔹 NaiveProxy
 | Платформа | Клиент | Ссылка |
 | :--- | :--- | :--- |
-| **Android** | NekoBox | [GitHub](https://github.com/MatsuriDayo/NekoBoxForAndroid/releases) |
+| **Android** | NekoBox | [Скачать с GitHub](https://github.com/MatsuriDayo/NekoBoxForAndroid/releases) |
 | **iOS** | Karing | [App Store](https://apps.apple.com/app/karing/id6472431552) |
-| **Windows** | v2rayN | [GitHub](https://github.com/2dust/v2rayN/releases) |
-| **MacOS** | NekoBox | [GitHub](https://github.com/MatsuriDayo/nekoray/releases) |
+| **Windows** | v2rayN | [Скачать с GitHub](https://github.com/2dust/v2rayN/releases) |
+| **MacOS** | NekoBox | [Скачать с GitHub](https://github.com/MatsuriDayo/nekoray/releases) |
+
+### 🔹 OlcRTC (OlcBox)
+| Платформа | Прямая ссылка (Nightly) |
+| :--- | :--- |
+| **Android** | [Olcbox-android-release.apk](https://github.com/alananisimov/olcbox/releases/download/nightly/Olcbox-android-release.apk) |
+| **Windows** | [Olcbox-windows-amd64.exe](https://github.com/alananisimov/olcbox/releases/download/nightly/Olcbox-windows-amd64.exe) |
+| **MacOS** | [Olcbox-macos.dmg](https://github.com/alananisimov/olcbox/releases/download/nightly/Olcbox-macos.dmg) |
+| **iOS** | [TestFlight / Manual](https://github.com/alananisimov/olcbox/releases) |
+| **Linux** | [Olcbox-linux-amd64.AppImage](https://github.com/alananisimov/olcbox/releases/download/nightly/Olcbox-linux-amd64.AppImage) |
 
 ---
 
-## 💡 Полезные команды
+## 🛠️ Структура управления
 
-- `sudo ./menu.sh` — открыть меню управления.
-- `journalctl -u caddy -f` — логи NaiveProxy в реальном времени.
-- `journalctl -u olcrtc -f` — логи OlcRTC в реальном времени.
-- `systemctl restart caddy` — перезапуск NaiveProxy.
+Запустите `sudo ./menu.sh` для доступа к разделам:
 
----
-
-## 🛡 Безопасность и стабильность
-- **Systemd**: Автоматический перезапуск сервисов при падении.
-- **UFW/iptables**: Автоматическая настройка брандмауэра.
-- **Маскировка**: Полноценный TLS сертификат и HTML-заглушка на порту 443.
+1. **📦 Install/Update**: Управление версиями и системными пакетами.
+2. **🛡️ NaiveProxy**: Управление пользователями, генерация `naive+https://` ссылок.
+3. **🚀 OlcRTC**: Генерация Room ID, настройка SFU портов и `olcrtc://` ссылок.
+4. **⚡ Optimization**: Применение сетевого тюнинга "в один клик".
+5. **📧 Email**: Настройка SMTP для рассылки доступов.
 
 ---
-*Сделано для свободы интернета. Опирается на наработки [klzgrad](https://github.com/klzgrad/naiveproxy) и [openlibrecommunity](https://github.com/openlibrecommunity/olcrtc).*
+*Created for Privacy and Performance.*
