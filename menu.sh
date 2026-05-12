@@ -207,9 +207,18 @@ uninstall_menu() {
     echo -e "${CYAN}─────────────────────────────────────────────────${NC}"
     read -p "Выберите опцию: " o
     case $o in
-        1) "$BASE_DIR/scripts/uninstall.sh" --naive ;;
-        2) "$BASE_DIR/scripts/uninstall.sh" --olcrtc ;;
-        3) "$BASE_DIR/scripts/uninstall.sh" --all ;;
+        1)
+            read -p "Вы уверены, что хотите удалить NaiveProxy? (y/n): " confirm
+            [[ $confirm == "y" ]] && bash "$BASE_DIR/scripts/uninstall.sh" --naive
+            ;;
+        2)
+            read -p "Вы уверены, что хотите удалить OlcRTC? (y/n): " confirm
+            [[ $confirm == "y" ]] && bash "$BASE_DIR/scripts/uninstall.sh" --olcrtc
+            ;;
+        3)
+            read -p "ВНИМАНИЕ! Это удалит ВСЕ настройки и данные. Продолжить? (y/n): " confirm
+            [[ $confirm == "y" ]] && bash "$BASE_DIR/scripts/uninstall.sh" --all
+            ;;
     esac
     read -p "Нажмите Enter..."
 }
